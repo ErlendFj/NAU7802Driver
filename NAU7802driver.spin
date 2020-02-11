@@ -5,7 +5,7 @@
  Supports register configuration and read-out of results - all mainstream chip functions. 
  
  Revisions:
-
+ - 1 Moved register reset out of poweron function as a separate function to allow warm start
 
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 }}
@@ -32,7 +32,7 @@
                                   | | 100n =   |--|AVSS       DVSS --------|                         
                            B+ ----|--      |   |  +----------------+       |                         
                                            |   |        NAU7802            |                         
-                                          GND GND                         GNDN
+                                          GND GND                         GND
 }
 
 
@@ -167,6 +167,7 @@ PUB Main  | value, status, regByte                                              
    pst.Chars(pst#NL, 2)
 
    Init(demoPINscl, demoPINsda)
+   Reset
 
    pst.Str(String("PWR_CTRL status: "))
    pst.Bin(i2c.ReadByteA8(ChipAddr, PU_CTRL), 8)
@@ -215,8 +216,13 @@ PUB Init(PINscl, PINsda)
      i2c.Init(PINscl, PINsda)
 
    RETURN TRUE
-     
 
+PUB Reset
+      
+    i2c.WriteByteA8(ChipAddr, PU_CTRL, bResetPU_CTRL)                                               'first of all reset all registers
+    i2c.WriteByteA8(ChipAddr, PU_CTRL, bZerosPU_CTRL)                                               'then un-reset
+
+        
 PUB Power(cmd) | regByte                                                 
 
    CASE cmd
@@ -224,8 +230,6 @@ PUB Power(cmd) | regByte
         RETURN i2c.ReadByteA8(ChipAddr, PU_CTRL) & bPWRrdyPU_CTRL                                       'return power ready status - will not work unless the digital is powered
         
      pwrOnDig:
-        i2c.WriteByteA8(ChipAddr, PU_CTRL, bResetPU_CTRL)                                               'first of all reset all registers
-        i2c.WriteByteA8(ChipAddr, PU_CTRL, bZerosPU_CTRL)                                               'then un-reset
         i2c.WriteByteA8(ChipAddr, PU_CTRL, bPWRdigPU_CTRL)                                              'write the power-up-digital bit first, so the chip can start responding)
         WAITCNT(clkfreq/1000 + cnt)
         
@@ -233,8 +237,6 @@ PUB Power(cmd) | regByte
         i2c.WriteByteA8(ChipAddr, PU_CTRL, regByte | bPWRanaPU_CTRL)                                    'power up analog part - will not work unless the digital is powered
 
      pwrOnAll:
-        i2c.WriteByteA8(ChipAddr, PU_CTRL, bResetPU_CTRL)                                               'first of all reset all registers
-        i2c.WriteByteA8(ChipAddr, PU_CTRL, bZerosPU_CTRL)                                               'then un-reset                   
         i2c.WriteByteA8(ChipAddr, PU_CTRL, bPWRdigPU_CTRL)                                              'write the power-up-digital bit first, so the chip can start responding
         WAITCNT(clkfreq/1000 + cnt)                                                                                                                   
                                                                                                                                                       
